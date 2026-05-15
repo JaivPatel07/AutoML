@@ -1,0 +1,95 @@
+{
+    "initial_shape": [
+        398,
+        9
+    ],
+    "final_shape": [
+        398,
+        8
+    ],
+    "removed_columns": [
+        "car name"
+    ],
+    "duplicate_rows_removed": [],
+    "missing_before": {
+        "mpg": 0,
+        "cylinders": 0,
+        "displacement": 0,
+        "horsepower": 6,
+        "weight": 0,
+        "acceleration": 0,
+        "model year": 0,
+        "origin": 0,
+        "car name": 0
+    },
+    "missing_after": {
+        "mpg": 0,
+        "cylinders": 0,
+        "displacement": 0,
+        "horsepower": 0,
+        "weight": 0,
+        "acceleration": 0,
+        "model year": 0,
+        "origin": 0
+    },
+    "filled_values": {
+        "mpg": {
+            "method": "median",
+            "count": 0
+        },
+        "cylinders": {
+            "method": "median",
+            "count": 0
+        },
+        "displacement": {
+            "method": "median",
+            "count": 0
+        },
+        "horsepower": {
+            "method": "mode",
+            "count": 6
+        },
+        "weight": {
+            "method": "median",
+            "count": 0
+        },
+        "acceleration": {
+            "method": "median",
+            "count": 0
+        },
+        "model year": {
+            "method": "median",
+            "count": 0
+        },
+        "origin": {
+            "method": "median",
+            "count": 0
+        }
+    },
+    "replaced_values": [],
+    "outliers": {
+        "mpg": {
+            "count": 1,
+            "rows": [
+                322
+            ]
+        },
+        "acceleration": {
+            "count": 7,
+            "rows": [
+                7,
+                9,
+                11,
+                59,
+                299,
+                326,
+                394
+            ]
+        }
+    },
+    "memory_before_mb": 0.07,
+    "memory_after_mb": 0.03,
+    "logs": [
+        "car name removed because it looks like name"
+    ]
+}
