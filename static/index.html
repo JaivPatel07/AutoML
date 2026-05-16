@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Data Cleaner</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Smart Data Cleaner</h1>
+        
+        <div class="upload-section">
+            <div id="uploadBox" class="upload-box">
+                <p>Click or Drag & Drop CSV or Excel file here</p>
+                <input type="file" id="fileInput" accept=".csv, .xlsx, .xls" hidden>
+            </div>
+            <button id="cleanBtn" class="primary-btn" style="display: none;">Clean File</button>
+            <button id="downloadBtn" class="primary-btn" style="display: none;">Download Cleaned CSV</button>
+            <button id="resetBtn" class="secondary-btn" style="display: none;">Reset</button>
+        </div>
+        
+        <div id="userOptions" class="user-options" style="display: none;">
+            <div class="option-group">
+                <label for="extraColumnsToRemove">Additional columns to remove (comma-separated):</label>
+                <input type="text" id="extraColumnsToRemove" placeholder="e.g., ID, Unnamed: 0">
+            </div>
+            <div class="option-group">
+                <input type="checkbox" id="removeOutliersCheckbox" checked>
+                <label for="removeOutliersCheckbox">Remove statistical outliers</label>
+            </div>
+            <div class="option-group">
+                <label for="outlierThreshold">Outlier Sensitivity:</label>
+                <select id="outlierThreshold" style="padding: 5px; border: 1px solid #ccc;">
+                    <option value="3.0">Conservative (3.0x IQR - Recommended)</option>
+                    <option value="1.5">Standard (1.5x IQR)</option>
+                </select>
+            </div>
+            <div class="option-group">
+                <label for="numericImputation">Numeric Imputation Method:</label>
+                <select id="numericImputation" style="padding: 5px; border: 1px solid #ccc;">
+                    <option value="median">Median (Default)</option>
+                    <option value="mean">Mean</option>
+                    <option value="zero">Zero</option>
+                </select>
+            </div>
+            <div class="option-group">
+                <label for="categoricalImputation">Categorical Imputation Method:</label>
+                <select id="categoricalImputation" style="padding: 5px; border: 1px solid #ccc;">
+                    <option value="mode">Most Frequent (Mode)</option>
+                    <option value="constant">Custom Constant</option>
+                </select>
+                <input type="text" id="categoricalConstant" placeholder="Constant value" style="display: none; padding: 5px; border: 1px solid #ccc; width: 150px;">
+            </div>
+        </div>
+
+        <div id="previewSection" style="display: none; margin-bottom: 40px;">
+            <h3>Data Preview (First 10 rows)</h3>
+            <div id="previewStats" class="stats"></div>
+            <p style="font-size: 0.85rem; margin-bottom: 10px;">
+                <span style="display: inline-block; width: 12px; height: 12px; background: #fce4e4; border: 1px solid #000; margin-right: 4px; vertical-align: middle;"></span>
+                Red highlighting indicates columns auto-flagged for removal. Hover over <span class="auto-tag">AUTO</span> for the reason.
+                <span style="display: inline-block; width: 12px; height: 12px; background: #ffdce0; border: 1px solid #ff4d4d; margin-left: 15px; margin-right: 4px; vertical-align: middle;"></span>
+                Red/Bold cells indicate statistical outliers.
+            </p>
+            <div class="table-container">
+                <table id="previewTable"><tbody></tbody></table>
+            </div>
+        </div>
+
+        <div id="progressBarContainer" style="display: none;">
+            <div id="progressBar"></div>
+            <span id="progressText">0%</span>
+        </div>
+        <div id="statusMessage" style="display: none;"></div>
+        <div id="loadingSpinner" style="display: none;">Processing...</div>
+        <div id="errorMessage" class="error-msg" style="display: none;"></div>
+
+        <div id="resultsSection" style="display: none;">
+            <div class="tabs">
+                <button class="tab-btn active" data-tab="original">Original Data</button>
+                <button class="tab-btn" data-tab="cleaned">Cleaned Data</button>
+                <button class="tab-btn" data-tab="removed">Removed Data</button>
+                <button class="tab-btn" data-tab="report">Report</button>
+            </div>
+
+            <div id="original" class="tab-pane active">
+                <div class="stats">Rows: <span id="originalRows">0</span> | Columns: <span id="originalCols">0</span></div>
+                <p style="font-size: 0.85rem; margin-bottom: 10px;">
+                    <span style="display: inline-block; width: 12px; height: 12px; background: #ffdce0; border: 1px solid #ff4d4d; margin-right: 4px; vertical-align: middle;"></span>
+                    Red/Bold cells indicate statistical outliers.
+                </p>
+                <div class="table-container">
+                    <table id="originalTable"><tbody></tbody></table>
+                </div>
+            </div>
+
+            <div id="cleaned" class="tab-pane">
+                <div class="stats">Rows: <span id="cleanedRows">0</span> | Columns: <span id="cleanedCols">0</span></div>
+                <div class="table-container">
+                    <table id="cleanedTable"><tbody></tbody></table>
+                </div>
+            </div>
+
+            <div id="removed" class="tab-pane">
+                <div class="stats">Rows: <span id="removedRows">0</span> | Columns: <span id="removedCols">0</span></div>
+                <div class="table-container">
+                    <table id="removedTable"><tbody></tbody></table>
+                </div>
+            </div>
+
+            <div id="report" class="tab-pane"><div id="reportContent"></div></div>
+        </div>
+    </div>
+    <script src="/static/script.js"></script>
+</body>
+</html>
