@@ -69,13 +69,13 @@
     },
     "replaced_values": [],
     "flagged_reasons": {
-        "car name": "Looks like personal names/Non-categorical text"
+        "car name": "Names/Text"
     },
     "outlier_removal_enabled": true,
     "outliers": {},
     "memory_before_mb": 0.07,
     "memory_after_mb": 0.03,
     "logs": [
-        "car name removed because it looks like name"
+        "Dropped text-heavy column: car name"
     ]
 }

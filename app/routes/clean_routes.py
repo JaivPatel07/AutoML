@@ -12,6 +12,10 @@ router = APIRouter()
 # Store the last uploaded file info
 last_upload = {}
 
+# Ensure directories exist once
+os.makedirs("app/uploads", exist_ok=True)
+os.makedirs("app/reports", exist_ok=True)
+
 def read_df(file_path):
     """Load DataFrame from CSV or Excel"""
     ext = os.path.splitext(file_path)[1].lower()
@@ -23,18 +27,13 @@ def read_df(file_path):
 
 def to_json(df, limit=100):
     """Convert DF to JSON-safe list of records"""
-    temp_df = df.head(limit).replace([np.inf, -np.inf], np.nan)
-
-    safe_df = temp_df.where(pd.notnull(temp_df), None)
-
-    return json.loads(
-        safe_df.to_json(orient="records")
-    )
+    subset = df.head(limit).replace([np.inf, -np.inf], np.nan)
+    # Using pandas' to_json is the most robust way to handle NaN/Inf for JSON compliance
+    return json.loads(subset.to_json(orient="records"))
 
 @router.post("/preview")
 async def preview_file(file: UploadFile = File(...)):
     """Get a preview of the CSV file before cleaning"""
-    os.makedirs("app/uploads", exist_ok=True)
     file_path = f"app/uploads/{file.filename}"
 
     try:
@@ -82,8 +81,6 @@ async def clean_file(
     categorical_constant: str = Form("UNKNOWN"),
     outlier_thresh: float = Form(3.0)
 ):
-    os.makedirs("app/uploads", exist_ok=True)
-    os.makedirs("app/reports", exist_ok=True)
     file_path = f"app/uploads/{file.filename}"
 
     with open(file_path, "wb") as f:

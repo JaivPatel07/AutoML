@@ -62,24 +62,21 @@ class SmartDataCleaner:
         for col in df.columns:
             n_unique = df[col].nunique(dropna=True)
             unique_ratio = n_unique / len(df)
+            
             if n_unique <= 1:
                 self.remove_columns.append(col)
                 self.flagged_reasons[col] = "Constant Value"
                 self.logs.append(f"Dropped constant column: {col}")
-                continue
-            if df[col].isnull().mean() > self.col_missing_limit:
+            elif df[col].isnull().mean() > self.col_missing_limit:
                 self.remove_columns.append(col)
                 self.flagged_reasons[col] = f"High Nulls (>{self.col_missing_limit*100}%)"
                 self.logs.append(f"Dropped high-null column: {col}")
-                continue
-
-            if (df[col].dtype == "object" and unique_ratio > self.id_limit):
+            elif (df[col].dtype == "object" and unique_ratio > self.id_limit):
                 self.remove_columns.append(col)
                 self.flagged_reasons[col] = "Unique ID"
                 self.logs.append(f"Dropped ID-like column: {col}")
-                continue
-            if df[col].dtype == "object":
-                avg_length = (df[col].dropna().astype(str).str.len().mean())
+            elif df[col].dtype == "object":
+                avg_length = df[col].dropna().astype(str).str.len().mean()
                 if (unique_ratio > self.name_limit and avg_length < self.max_name_size):
                     self.remove_columns.append(col)
                     self.flagged_reasons[col] = "Names/Text"
@@ -109,7 +106,7 @@ class SmartDataCleaner:
             "initial_shape": df.shape,
             "final_shape": None,
             "removed_columns": [],
-            "duplicate_rows_removed": [],
+            "duplicate_rows_removed": df[df.duplicated()].index.tolist(),
             "missing_value_rows_removed": [],
             "missing_before": df.isnull().sum().to_dict(),
             "missing_after": {},
@@ -122,8 +119,6 @@ class SmartDataCleaner:
             "memory_after_mb": None,
             "logs": self.logs
         }
-        duplicate_rows = df[df.duplicated()].index.tolist()
-        report["duplicate_rows_removed"] = duplicate_rows
         df = df.drop_duplicates()
         df.drop(
             columns=self.remove_columns,
@@ -184,10 +179,8 @@ class SmartDataCleaner:
                     continue
                 
                 lower, upper = bounds
-                outlier_rows = df[
-                    (df[col] < lower) |
-                    (df[col] > upper)
-                ].index.tolist()
+                mask = (df[col] < lower) | (df[col] > upper)
+                outlier_rows = df.index[mask].tolist()
 
                 if outlier_rows:
                     report["outliers"][col] = {

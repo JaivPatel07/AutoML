@@ -1,5 +1,22 @@
-__pycache__
-*.pyc
-*.pyo
-*.pyd
-*.db    
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+
+# IDEs
+.vscode/
+.idea/
+
+# Project Specific
+app/uploads/*
+!app/uploads/.gitkeep
+app/reports/*
+!app/reports/.gitkeep
+
+# OS
+.DS_Store
+Thumbs.db
+*.log

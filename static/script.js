@@ -4,6 +4,7 @@ const fileInput = document.getElementById('fileInput');
 const cleanBtn = document.getElementById('cleanBtn');
 const resetBtn = document.getElementById('resetBtn');
 const downloadBtn = document.getElementById('downloadBtn');
+const predictBtn = document.getElementById('predictBtn');
 const userOptionsDiv = document.getElementById('userOptions');
 const dropColsInput = document.getElementById('dropCols');
 const outlierToggle = document.getElementById('outlierToggle');
@@ -22,6 +23,8 @@ const tabButtons = document.querySelectorAll('.tab-btn');
 const tabPanes = document.querySelectorAll('.tab-pane');
 
 let selectedFile = null;
+let missingChart = null;
+let retentionChart = null;
 
 // File Upload Handlers
 uploadBox.addEventListener('click', () => fileInput.click());
@@ -163,6 +166,7 @@ cleanBtn.addEventListener('click', async () => {
                 resultsSection.style.display = 'block';
                 resetBtn.style.display = 'block';
                 downloadBtn.style.display = 'block';
+                predictBtn.style.display = 'block';
                 userOptionsDiv.style.display = 'none';
             } else {
                 showLoading(false);
@@ -234,6 +238,12 @@ async function loadReport() {
         html += `<li><strong>Outlier Removal Enabled:</strong> ${report.outlier_removal_enabled ? 'Yes' : 'No'}</li>`;
         html += '</ul></div>';
 
+        // 1.5. Missing Values Chart
+        html += '<div class="report-section"><h3>Missing Values Comparison</h3><div class="chart-container"><canvas id="missingValuesChart"></canvas></div></div>';
+
+        // 1.6. Data Retention Chart
+        html += '<div class="report-section"><h3>Data Retention Summary</h3><div class="chart-container"><canvas id="dataRetentionChart"></canvas></div></div>';
+
         // 2. Structural Changes
         if (report.removed_columns.length > 0) {
             html += '<div class="report-section"><h3>Dropped Columns</h3><ul>';
@@ -283,10 +293,100 @@ async function loadReport() {
 
         html += '</div>';
         reportContent.innerHTML = html;
+
+        // Render the chart after HTML is injected
+        renderMissingValuesChart(report);
+        renderDataRetentionChart(report);
     } catch (error) {
         console.error('Error rendering report:', error);
     }
 }
+
+function renderMissingValuesChart(report) {
+    const ctx = document.getElementById('missingValuesChart');
+    if (!ctx) return;
+
+    if (missingChart) missingChart.destroy();
+
+    const labels = Object.keys(report.missing_before);
+    const beforeData = labels.map(label => report.missing_before[label]);
+    const afterData = labels.map(label => report.missing_after[label] || 0);
+
+    missingChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Before Cleaning',
+                    data: beforeData,
+                    backgroundColor: '#111',
+                    borderColor: '#111',
+                    borderWidth: 1
+                },
+                {
+                    label: 'After Cleaning',
+                    data: afterData,
+                    backgroundColor: '#ffcc00',
+                    borderColor: '#111',
+                    borderWidth: 1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: { beginAtZero: true, ticks: { precision: 0 } }
+            },
+            plugins: { legend: { position: 'top' } }
+        }
+    });
+}
+
+function renderDataRetentionChart(report) {
+    const ctx = document.getElementById('dataRetentionChart');
+    if (!ctx) return;
+
+    if (retentionChart) retentionChart.destroy();
+
+    const kept = report.final_shape[0];
+    const initial = report.initial_shape[0];
+    const removed = initial - kept;
+
+    retentionChart = new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: ['Rows Kept', 'Rows Removed'],
+            datasets: [{
+                data: [kept, removed],
+                backgroundColor: ['#111', '#ffcc00'],
+                borderColor: '#111',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'top',
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const value = context.raw;
+                            const total = initial;
+                            const percentage = ((value / total) * 100).toFixed(1);
+                            return `${context.label}: ${value.toLocaleString()} (${percentage}%)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
 // Render Table Helper
 function renderTable(tableId, data) {
     const table = document.getElementById(tableId);
@@ -398,6 +498,11 @@ tabButtons.forEach(button => {
 // Download Function
 downloadBtn.addEventListener('click', () => {
     window.location.href = '/download';
+});
+
+// Prediction Function
+predictBtn.addEventListener('click', () => {
+    alert('Prediction feature placeholder: The cleaned data is now ready for model training or inference!');
 });
 
 // Reset Function
