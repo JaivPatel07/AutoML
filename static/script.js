@@ -5,12 +5,12 @@ const cleanBtn = document.getElementById('cleanBtn');
 const resetBtn = document.getElementById('resetBtn');
 const downloadBtn = document.getElementById('downloadBtn');
 const userOptionsDiv = document.getElementById('userOptions');
-const extraColumnsToRemoveInput = document.getElementById('extraColumnsToRemove');
-const removeOutliersCheckbox = document.getElementById('removeOutliersCheckbox');
-const outlierThresholdSelect = document.getElementById('outlierThreshold');
-const numericImputationSelect = document.getElementById('numericImputation');
-const categoricalImputationSelect = document.getElementById('categoricalImputation');
-const categoricalConstantInput = document.getElementById('categoricalConstant');
+const dropColsInput = document.getElementById('dropCols');
+const outlierToggle = document.getElementById('outlierToggle');
+const outlierThresh = document.getElementById('outlierThresh');
+const numFill = document.getElementById('numFill');
+const catFill = document.getElementById('catFill');
+const catConst = document.getElementById('catConst');
 const progressBarContainer = document.getElementById('progressBarContainer');
 const progressBar = document.getElementById('progressBar');
 const progressText = document.getElementById('progressText');
@@ -47,8 +47,8 @@ uploadBox.addEventListener('drop', (e) => {
 });
 
 // Toggle categorical constant input visibility
-categoricalImputationSelect.addEventListener('change', () => {
-    categoricalConstantInput.style.display = categoricalImputationSelect.value === 'constant' ? 'block' : 'none';
+catFill.addEventListener('change', () => {
+    catConst.style.display = catFill.value === 'constant' ? 'block' : 'none';
 });
 
 async function handleFileSelect(file) {
@@ -61,7 +61,7 @@ async function handleFileSelect(file) {
     }
     
     selectedFile = file;
-    extraColumnsToRemoveInput.value = '';
+    dropColsInput.value = '';
     uploadBox.querySelector('p').textContent = `✓ Selected: ${file.name}`;
     uploadBox.style.borderColor = '#ffffff';
     // Generate Preview before cleaning
@@ -89,7 +89,7 @@ async function loadPreview(file) {
         document.getElementById('previewStats').textContent = `Total Rows: ${data.total_rows.toLocaleString()} | Total Columns: ${data.columns.length}`;
         
         if (data.auto_flagged && Object.keys(data.auto_flagged).length > 0) {
-            extraColumnsToRemoveInput.value = Object.keys(data.auto_flagged).join(', ');
+            dropColsInput.value = Object.keys(data.auto_flagged).join(', ');
         }
         
         renderTable('previewTable', data);
@@ -114,21 +114,21 @@ cleanBtn.addEventListener('click', async () => {
         progressBar.style.width = '0%';
         progressText.textContent = '0%';
         
-        const columnsToRemove = extraColumnsToRemoveInput.value;
-        const removeOutliers = removeOutliersCheckbox.checked;
-        const outlierThreshold = outlierThresholdSelect.value;
-        const numericImputation = numericImputationSelect.value;
-        const categoricalImputation = categoricalImputationSelect.value;
-        const categoricalConstant = categoricalConstantInput.value;
+        const colsToDrop = dropColsInput.value;
+        const dropOutliers = outlierToggle.checked;
+        const thresh = outlierThresh.value;
+        const numMethod = numFill.value;
+        const catMethod = catFill.value;
+        const constVal = catConst.value;
 
         const formData = new FormData();
         formData.append('file', selectedFile);
-        formData.append('columns_to_remove', columnsToRemove);
-        formData.append('remove_outliers', removeOutliers);
-        formData.append('outlier_threshold', outlierThreshold);
-        formData.append('numeric_imputation', numericImputation);
-        formData.append('categorical_imputation', categoricalImputation);
-        formData.append('categorical_constant', categoricalConstant);
+        formData.append('drop_cols', colsToDrop);
+        formData.append('use_outliers', dropOutliers);
+        formData.append('outlier_thresh', thresh);
+        formData.append('num_fill', numMethod);
+        formData.append('cat_fill', catMethod);
+        formData.append('categorical_constant', constVal);
         
         const xhr = new XMLHttpRequest();
         xhr.open('POST', '/clean', true);
@@ -321,7 +321,7 @@ function renderTable(tableId, data) {
             }
 
             cb.addEventListener('change', () => {
-                let current = extraColumnsToRemoveInput.value
+                let current = dropColsInput.value
                     .split(',')
                     .map(s => s.trim())
                     .filter(s => s !== "");
@@ -331,7 +331,7 @@ function renderTable(tableId, data) {
                 } else {
                     current = current.filter(c => c !== col);
                 }
-                extraColumnsToRemoveInput.value = current.join(', ');
+                dropColsInput.value = current.join(', ');
             });
 
             const label = document.createElement('span');

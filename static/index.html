@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Smart Data Cleaner</title>
     <link rel="stylesheet" href="/static/styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
     <div class="container">
@@ -22,35 +24,35 @@
         
         <div id="userOptions" class="user-options" style="display: none;">
             <div class="option-group">
-                <label for="extraColumnsToRemove">Additional columns to remove (comma-separated):</label>
-                <input type="text" id="extraColumnsToRemove" placeholder="e.g., ID, Unnamed: 0">
+                <label for="dropCols">Columns to drop (comma-separated):</label>
+                <input type="text" id="dropCols" placeholder="e.g., ID, Unnamed: 0">
             </div>
             <div class="option-group">
-                <input type="checkbox" id="removeOutliersCheckbox" checked>
-                <label for="removeOutliersCheckbox">Remove statistical outliers</label>
+                <input type="checkbox" id="outlierToggle" checked>
+                <label for="outlierToggle">Remove outliers</label>
             </div>
             <div class="option-group">
-                <label for="outlierThreshold">Outlier Sensitivity:</label>
-                <select id="outlierThreshold" style="padding: 5px; border: 1px solid #ccc;">
+                <label for="outlierThresh">Outlier Sensitivity:</label>
+                <select id="outlierThresh" style="padding: 5px; border: 1px solid #ccc;">
                     <option value="3.0">Conservative (3.0x IQR - Recommended)</option>
                     <option value="1.5">Standard (1.5x IQR)</option>
                 </select>
             </div>
             <div class="option-group">
-                <label for="numericImputation">Numeric Imputation Method:</label>
-                <select id="numericImputation" style="padding: 5px; border: 1px solid #ccc;">
+                <label for="numFill">Numeric Imputation:</label>
+                <select id="numFill" style="padding: 5px; border: 1px solid #ccc;">
                     <option value="median">Median (Default)</option>
                     <option value="mean">Mean</option>
                     <option value="zero">Zero</option>
                 </select>
             </div>
             <div class="option-group">
-                <label for="categoricalImputation">Categorical Imputation Method:</label>
-                <select id="categoricalImputation" style="padding: 5px; border: 1px solid #ccc;">
-                    <option value="mode">Most Frequent (Mode)</option>
+                <label for="catFill">Categorical Imputation:</label>
+                <select id="catFill" style="padding: 5px; border: 1px solid #ccc;">
+                    <option value="mode">Mode</option>
                     <option value="constant">Custom Constant</option>
                 </select>
-                <input type="text" id="categoricalConstant" placeholder="Constant value" style="display: none; padding: 5px; border: 1px solid #ccc; width: 150px;">
+                <input type="text" id="catConst" placeholder="Value" style="display: none; padding: 5px; border: 1px solid #ccc; width: 150px;">
             </div>
         </div>
 

@@ -83,9 +83,9 @@
     },
     "replaced_values": [],
     "flagged_reasons": {
-        "Name": "Looks like a Unique ID/Identifier",
-        "Ticket": "Looks like personal names/Non-categorical text",
-        "Cabin": "High missing values (>70.0%)"
+        "Name": "Unique ID",
+        "Ticket": "Names/Text",
+        "Cabin": "High Nulls (>70.0%)"
     },
     "outlier_removal_enabled": true,
     "outliers": {
@@ -386,9 +386,9 @@
     "memory_before_mb": 0.31,
     "memory_after_mb": 0.09,
     "logs": [
-        "Name removed because it looks like ID",
-        "Ticket removed because it looks like name",
-        "Cabin removed because missing values are high",
+        "Dropped ID-like column: Name",
+        "Dropped text-heavy column: Ticket",
+        "Dropped high-null column: Cabin",
         "Rows removed from Embarked due to low missing value ratio",
         "Outliers detected and flagged in column: SibSp (count: 12)",
         "Outliers detected and flagged in column: Parch (count: 213)",

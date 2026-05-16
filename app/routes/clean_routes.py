@@ -12,8 +12,8 @@ router = APIRouter()
 # Store the last uploaded file info
 last_upload = {}
 
-def load_df(file_path):
-    """Helper to load DataFrame based on file extension"""
+def read_df(file_path):
+    """Load DataFrame from CSV or Excel"""
     ext = os.path.splitext(file_path)[1].lower()
     if ext == '.csv':
         return pd.read_csv(file_path)
@@ -21,7 +21,8 @@ def load_df(file_path):
         return pd.read_excel(file_path)
     raise ValueError(f"Unsupported file format: {ext}")
 
-def to_json_safe(df, limit=100):
+def to_json(df, limit=100):
+    """Convert DF to JSON-safe list of records"""
     temp_df = df.head(limit).replace([np.inf, -np.inf], np.nan)
 
     safe_df = temp_df.where(pd.notnull(temp_df), None)
@@ -41,7 +42,7 @@ async def preview_file(file: UploadFile = File(...)):
         content = await file.read()
         with open(file_path, "wb") as f:
             f.write(content)
-        df = load_df(file_path)
+        df = read_df(file_path)
         cleaner = SmartDataCleaner()
         cleaner.fit(df)
         last_upload["original_file"] = file_path
@@ -61,7 +62,7 @@ async def preview_file(file: UploadFile = File(...)):
                     outliers_found[idx_str].append(col)
         return {
             "filename": file.filename,
-            "data": to_json_safe(df, limit=10),
+            "data": to_json(df, limit=10),
             "shape": df.shape,
             "columns": df.columns.tolist(),
             "total_rows": len(df),
@@ -74,12 +75,12 @@ async def preview_file(file: UploadFile = File(...)):
 @router.post("/clean")
 async def clean_file(
     file: UploadFile = File(...),
-    columns_to_remove: str = Form(None),
-    remove_outliers: bool = Form(True),
-    numeric_imputation: str = Form("median"),
-    categorical_imputation: str = Form("mode"),
+    drop_cols: str = Form(None),
+    use_outliers: bool = Form(True),
+    num_fill: str = Form("median"),
+    cat_fill: str = Form("mode"),
     categorical_constant: str = Form("UNKNOWN"),
-    outlier_threshold: float = Form(3.0)
+    outlier_thresh: float = Form(3.0)
 ):
     os.makedirs("app/uploads", exist_ok=True)
     os.makedirs("app/reports", exist_ok=True)
@@ -88,18 +89,18 @@ async def clean_file(
     with open(file_path, "wb") as f:
         f.write(await file.read())
 
-    extra_cols = []
-    if columns_to_remove:
-        extra_cols = [col.strip() for col in columns_to_remove.split(',') if col.strip()]
+    drop_list = []
+    if drop_cols:
+        drop_list = [c.strip() for c in drop_cols.split(',') if c.strip()]
 
-    df = load_df(file_path)
+    df = read_df(file_path)
     cleaner = SmartDataCleaner(
-        extra_columns_to_remove=extra_cols,
-        remove_outliers_flag=remove_outliers,
-        numeric_imputation=numeric_imputation,
-        categorical_imputation=categorical_imputation,
+        drop_cols=drop_list,
+        use_outliers=use_outliers,
+        num_fill=num_fill,
+        cat_fill=cat_fill,
         categorical_constant=categorical_constant,
-        outlier_threshold=outlier_threshold
+        outlier_thresh=outlier_thresh
     )
     clean_df = cleaner.fit_transform(df)
     base_name = os.path.splitext(file.filename)[0]
@@ -127,7 +128,7 @@ async def view_original():
         raise HTTPException(status_code=404, detail="No file uploaded yet")
     
     try:
-        df = load_df(last_upload["original_file"])
+        df = read_df(last_upload["original_file"])
 
         outliers_found = {}
         if "report_file" in last_upload and os.path.exists(last_upload["report_file"]):
@@ -147,7 +148,7 @@ async def view_original():
 
         return {
             "filename": last_upload["filename"],
-            "data": to_json_safe(df, limit=100),
+            "data": to_json(df, limit=100),
             "shape": df.shape,
             "columns": df.columns.tolist(),
             "total_rows": len(df),
@@ -163,11 +164,11 @@ async def view_cleaned():
         raise HTTPException(status_code=404, detail="No cleaned file available")
     
     try:
-        df = load_df(last_upload["cleaned_file"])
+        df = read_df(last_upload["cleaned_file"])
 
         return {
             "filename": last_upload["filename"],
-            "data": to_json_safe(df, limit=100),
+            "data": to_json(df, limit=100),
             "shape": df.shape,
             "columns": df.columns.tolist(),
             "total_rows": len(df)
@@ -182,8 +183,7 @@ async def view_removed():
         raise HTTPException(status_code=404, detail="No cleaning task performed yet")
     
     try:
-        # Load original data
-        df_orig = load_df(last_upload["original_file"])
+        df_orig = read_df(last_upload["original_file"])
         
         # Load report to get indices
         with open(last_upload["report_file"], "r") as f:
@@ -215,7 +215,7 @@ async def view_removed():
         removed_df.insert(0, "Removal Reason", [reasons_map[idx] for idx in indices])
         return {
             "filename": last_upload["filename"],
-            "data": to_json_safe(removed_df, limit=100),
+            "data": to_json(removed_df, limit=100),
             "shape": removed_df.shape,
             "columns": removed_df.columns.tolist(),
             "total_rows": len(removed_df)

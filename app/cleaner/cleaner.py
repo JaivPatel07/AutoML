@@ -30,13 +30,13 @@ class SmartDataCleaner:
         col_missing_limit=0.7,
         id_limit=0.95,
         name_limit=0.7,
-        extra_columns_to_remove=None,
-        remove_outliers_flag=True,
+        drop_cols=None,
+        use_outliers=True,
         max_name_size=25,
-        numeric_imputation="median",
-        categorical_imputation="mode",
+        num_fill="median",
+        cat_fill="mode",
         categorical_constant="UNKNOWN",
-        outlier_threshold=3.0
+        outlier_thresh=3.0
     ):
 
         self.row_missing_limit = row_missing_limit
@@ -44,12 +44,12 @@ class SmartDataCleaner:
         self.id_limit = id_limit
         self.name_limit = name_limit
         self.max_name_size = max_name_size
-        self.extra_columns_to_remove = extra_columns_to_remove if extra_columns_to_remove is not None else []
-        self.remove_outliers_flag = remove_outliers_flag
-        self.numeric_imputation = numeric_imputation
-        self.categorical_imputation = categorical_imputation
+        self.drop_cols = drop_cols if drop_cols is not None else []
+        self.use_outliers = use_outliers
+        self.num_fill = num_fill
+        self.cat_fill = cat_fill
         self.categorical_constant = categorical_constant
-        self.outlier_threshold = outlier_threshold
+        self.outlier_thresh = outlier_thresh
 
         self.remove_columns = []
         self.flagged_reasons = {}
@@ -64,26 +64,26 @@ class SmartDataCleaner:
             unique_ratio = n_unique / len(df)
             if n_unique <= 1:
                 self.remove_columns.append(col)
-                self.flagged_reasons[col] = "Constant value (only one unique value)"
-                self.logs.append(f"{col} removed because it has one value")
+                self.flagged_reasons[col] = "Constant Value"
+                self.logs.append(f"Dropped constant column: {col}")
                 continue
             if df[col].isnull().mean() > self.col_missing_limit:
                 self.remove_columns.append(col)
-                self.flagged_reasons[col] = f"High missing values (>{self.col_missing_limit*100}%)"
-                self.logs.append(f"{col} removed because missing values are high")
+                self.flagged_reasons[col] = f"High Nulls (>{self.col_missing_limit*100}%)"
+                self.logs.append(f"Dropped high-null column: {col}")
                 continue
 
             if (df[col].dtype == "object" and unique_ratio > self.id_limit):
                 self.remove_columns.append(col)
-                self.flagged_reasons[col] = "Looks like a Unique ID/Identifier"
-                self.logs.append(f"{col} removed because it looks like ID")
+                self.flagged_reasons[col] = "Unique ID"
+                self.logs.append(f"Dropped ID-like column: {col}")
                 continue
             if df[col].dtype == "object":
                 avg_length = (df[col].dropna().astype(str).str.len().mean())
                 if (unique_ratio > self.name_limit and avg_length < self.max_name_size):
                     self.remove_columns.append(col)
-                    self.flagged_reasons[col] = "Looks like personal names/Non-categorical text"
-                    self.logs.append(f"{col} removed because it looks like name")
+                    self.flagged_reasons[col] = "Names/Text"
+                    self.logs.append(f"Dropped text-heavy column: {col}")
         
         # Calculate outlier bounds for all numeric columns
         self.outlier_bounds = {}
@@ -93,11 +93,11 @@ class SmartDataCleaner:
                 q3 = df[col].quantile(0.75)
                 iqr = q3 - q1
                 self.outlier_bounds[col] = (
-                    q1 - self.outlier_threshold * iqr,
-                    q3 + self.outlier_threshold * iqr
+                    q1 - self.outlier_thresh * iqr,
+                    q3 + self.outlier_thresh * iqr
                 )
 
-        for col in self.extra_columns_to_remove:
+        for col in self.drop_cols:
             if col in df.columns and col not in self.remove_columns:
                 self.remove_columns.append(col)
                 self.logs.append(f"User requested removal of column: {col}")
@@ -116,7 +116,7 @@ class SmartDataCleaner:
             "filled_values": {},
             "replaced_values": replaced_data,
             "flagged_reasons": self.flagged_reasons,
-            "outlier_removal_enabled": self.remove_outliers_flag,
+            "outlier_removal_enabled": self.use_outliers,
             "outliers": {},
             "memory_before_mb": round(memory_before, 2) if np.isfinite(memory_before) else 0.0,
             "memory_after_mb": None,
@@ -142,10 +142,10 @@ class SmartDataCleaner:
                 self.logs.append(f"Rows removed from {col} due to low missing value ratio")
 
             elif pd.api.types.is_numeric_dtype(df[col]):
-                if self.numeric_imputation == "mean":
+                if self.num_fill == "mean":
                     fill_value = df[col].mean()
                     method_name = "mean"
-                elif self.numeric_imputation == "zero":
+                elif self.num_fill == "zero":
                     fill_value = 0
                     method_name = "zero"
                 else:
@@ -160,7 +160,7 @@ class SmartDataCleaner:
                 }
 
             else:
-                if self.categorical_imputation == "constant":
+                if self.cat_fill == "constant":
                     fill_value = self.categorical_constant if self.categorical_constant else "UNKNOWN"
                     method_name = "constant"
                 else:
@@ -177,7 +177,7 @@ class SmartDataCleaner:
                     "count": int(fill_count)
                 }
 
-        if self.remove_outliers_flag:
+        if self.use_outliers:
             all_outlier_indices = set()
             for col, bounds in self.outlier_bounds.items():
                 if col not in df.columns:
