@@ -1,149 +1,87 @@
-# Smart Data Cleaner 🧹
+# Smart Data Cleaner
 
-An intelligent data cleaning application with a modern web interface that allows you to upload CSV or Excel files, automatically clean them, and compare before/after results.
+An intelligent data cleaning application featuring a high-contrast **Neobrutalist UI**. It automates the tedious parts of data preparation, providing smart suggestions for column removal and handling missing data or outliers with ease.
 
-## Features
+## Key Features
+- **Drag-and-Drop Upload**: Supports CSV and Excel (`.xlsx`, `.xls`) files.
+- **Smart Detection**: Automatically flags constant columns, high-null columns, and unique ID-like columns.
+- **Advanced Cleaning**:
+    - Standardizes missing value representations (e.g., `?`, `NA`, `null`).
+    - Detects and removes repetitive junk values.
+    - Handles numeric and categorical imputation (Mean, Median, Mode, Constant).
+    - Statistical outlier detection using the Interquartile Range (IQR) method.
+- **Interactive Reports**: Detailed visualization of missing values and data retention using Chart.js.
+- **Neobrutalist Dark Mode**: A high-contrast dark theme toggle for better accessibility.
+- **Memory Optimization**: Automatically downcasts data types to reduce memory footprint.
 
-✨ **Key Features:**
-- 🚀 Easy drag-and-drop CSV or Excel file upload
-- 🧹 Automatic data cleaning with smart algorithms
-- 📊 Side-by-side comparison of original vs cleaned data
-- 📈 Detailed cleaning report with statistics
-- 📱 Responsive web interface
-- 🎨 Modern, intuitive UI
-
-## Installation
+## 🛠️ Installation
 
 1. **Clone the repository:**
-```bash
-git clone <repository-url>
-cd AutoML
-```
+   ```bash
+   git clone <repository-url>
+   cd AutoML
+   ```
 
-2. **Install dependencies:**
-```bash
-pip install -r requirements.txt
-```
+2. **Set up a virtual environment (optional):**
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
 
-## Usage
+3. **Install dependencies:**
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-### Starting the Application
+## 🚀 Usage
 
-1. **Run the server:**
-```bash
-python run.py
-```
+1. **Start the FastAPI server:**
+   ```bash
+   python run.py
+   ```
+   The application will start at `http://localhost:8000`.
 
-The API will start at `http://localhost:8000`
+2. **Access the Web Interface**:
+   Open your browser and navigate to `http://localhost:8000`.
 
-2. **Open in browser:**
-Navigate to `http://localhost:8000/static/index.html`
+3. **Workflow**:
+   - Upload your file to see a **Data Preview**.
+   - Review auto-flagged columns and adjust cleaning settings (imputation methods, outlier sensitivity).
+   - Click **Clean File** to process the entire dataset.
+   - Explore the **Original**, **Cleaned**, and **Removed** tabs to verify the results.
+   - Download your cleaned CSV.
 
-### Using the Frontend
-
-1. **Upload File**: Select or drag-drop a CSV/Excel file.
-2. **Clean File**: Click "Clean File".
-3. **View Results**: Compare data and view statistics in the tabs.
-   - **Original Tab**: See your original data
-   - **Cleaned Tab**: See the cleaned version
-   - **Report Tab**: View detailed cleaning statistics and changes
-
-## Project Structure
+## 📂 Project Structure
 
 ```
 AutoML/
 ├── app/
-│   ├── main.py              # FastAPI application setup
 │   ├── cleaner/
-│   │   └── cleaner.py       # Data cleaning logic
+│   │   └── cleaner.py       # Core SmartDataCleaner engine
 │   ├── routes/
-│   │   └── clean_routes.py  # API endpoints
-│   └── uploads/             # Uploaded files (auto-created)
+│   │   └── clean_routes.py  # FastAPI endpoints for processing/previewing
+│   ├── main.py              # Application setup & static mounting
+│   ├── uploads/             # Processed datasets storage
+│   └── reports/             # JSON report storage
 ├── static/
-│   ├── index.html          # Frontend UI
-│   ├── styles.css          # Styling
-│   └── script.js           # Frontend logic
-├── run.py                   # Application entry point
-└── requirements.txt         # Python dependencies
+│   ├── index.html           # Neobrutalist frontend
+│   ├── styles.css           # Custom CSS with Dark Mode variables
+│   └── script.js            # Frontend logic & Chart.js integration
+├── run.py                   # Server entry point
+└── requirements.txt         # Project dependencies
 ```
 
-## API Endpoints
+## 🔗 API Overview
+- `POST /preview`: Generates a 10-row preview and identifies auto-flagging suggestions.
+- `POST /clean`: Processes the file based on user-defined parameters.
+- `GET /view/original`: Returns the original data with outlier highlighting.
+- `GET /view/cleaned`: Returns the final cleaned dataset.
+- `GET /view/removed`: Returns rows discarded during cleaning with specific reasons (Duplicates, Outliers, etc.).
+- `GET /report`: Fetches the comprehensive JSON cleaning report.
+- `GET /download`: Triggers the download of the cleaned CSV.
 
-### POST `/clean`
-Upload and clean a CSV/Excel file.
-**Parameters:**
-- `file`: File to clean
-
-**Response:**
-```json
-{
-  "message": "Cleaning completed",
-  "cleaned_file": "app/uploads/cleaned_filename.csv",
-  "report_file": "app/reports/filename.csv_report.json",
-  "filename": "filename.csv"
-}
-```
-
-### GET `/view/original`
-Get original file data (first 100 rows).
-
-**Response:**
-```json
-{
-  "filename": "filename.csv",
-  "data": [...],
-  "shape": [rows, columns],
-  "columns": [...],
-  "total_rows": number
-}
-```
-
-### GET `/view/cleaned`
-Get cleaned data (first 100 rows).
-
-**Response:** Same format as `/view/original`
-
-### GET `/report`
-Get cleaning report with statistics.
-
-## What Gets Cleaned
-
-The Smart Data Cleaner performs the following operations:
-
-- ✓ Missing value detection and handling
-- ✓ Duplicate value removal
-- ✓ Data type inference
-- ✓ Outlier detection
-- ✓ Invalid character removal
-- ✓ Whitespace trimming
-- ✓ Format standardization
-
-## System Requirements
-
-- Python 3.8 or higher
-- Modern web browser (Chrome, Firefox, Safari, Edge)
-- 2GB RAM minimum
-
-## Troubleshooting
-
-**Issue: "Cannot connect to API server"**
-- Make sure the server is running: `python run.py`
-- Check that port 8000 is not in use
-- Verify no firewall is blocking localhost:8000
-
-**Issue: File upload fails**
-- Ensure the file is a valid CSV or Excel format
-- Check file size is reasonable (< 100MB recommended)
-- Try a different file to confirm it's not file-specific
-
-**Issue: Cleaning takes too long**
-- Large files may take time to process
-- Try with a smaller sample of your data first
-
-## License
-
+## ⚖️ License
 This project is licensed under the MIT License.
 
-## Support
-
-For issues or questions, please open an issue in the repository.
+---
+*Built with FastAPI, Pandas, and Neobrutalist Design.*
