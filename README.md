@@ -14,7 +14,7 @@ An intelligent data cleaning application featuring a high-contrast **Neobrutalis
 - **Neobrutalist Dark Mode**: A high-contrast dark theme toggle for better accessibility.
 - **Memory Optimization**: Automatically downcasts data types to reduce memory footprint.
 
-## 🛠️ Installation
+##  Installation
 
 1. **Clone the repository:**
    ```bash
@@ -33,7 +33,7 @@ An intelligent data cleaning application featuring a high-contrast **Neobrutalis
    pip install -r requirements.txt
    ```
 
-## 🚀 Usage
+##  Usage
 
 1. **Start the FastAPI server:**
    ```bash
@@ -51,7 +51,7 @@ An intelligent data cleaning application featuring a high-contrast **Neobrutalis
    - Explore the **Original**, **Cleaned**, and **Removed** tabs to verify the results.
    - Download your cleaned CSV.
 
-## 📂 Project Structure
+##  Project Structure
 
 ```
 AutoML/
@@ -71,7 +71,7 @@ AutoML/
 └── requirements.txt         # Project dependencies
 ```
 
-## 🔗 API Overview
+##  API Overview
 - `POST /preview`: Generates a 10-row preview and identifies auto-flagging suggestions.
 - `POST /clean`: Processes the file based on user-defined parameters.
 - `GET /view/original`: Returns the original data with outlier highlighting.
@@ -80,7 +80,7 @@ AutoML/
 - `GET /report`: Fetches the comprehensive JSON cleaning report.
 - `GET /download`: Triggers the download of the cleaned CSV.
 
-## ⚖️ License
+##  License
 This project is licensed under the MIT License.
 
 ---
