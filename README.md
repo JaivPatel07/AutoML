@@ -11,6 +11,13 @@ The project automates repetitive data cleaning tasks such as missing value handl
 It is designed to simplify preprocessing workflows for machine learning and data analytics pipelines.
 
 ---
+### Project Gallery
+
+| **1. Data Upload** | **2. Smart Analysis** | **3. Cleaning Config** |
+|:---:|:---:|:---:|
+| ![Dashboard](assets/images/Screenshot%202026-05-17%20152919.png) | ![Analysis](assets/images/Screenshot%202026-05-17%20153248.png) | ![Config](assets/images/Screenshot%202026-05-17%20153318.png) |
+| **4. Processed Data** | **5. Visual Statistics** | **6. Detailed Report** |
+| ![Processing](assets/images/Screenshot%202026-05-17%20154216.png) | ![Statistics](assets/images/Screenshot%202026-05-17%20154241.png) | ![Final Report](assets/images/image.png) |
 
 ## Features
 
@@ -167,6 +174,9 @@ AutoML/
 │   ├── uploads/
 │   ├── reports/
 │   └── main.py
+│
+├── assets/
+│   └── images/
 │
 ├── static/
 │   ├── index.html
