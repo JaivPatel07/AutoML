@@ -11,7 +11,12 @@
 </head>
 <body>
     <div class="container">
-        <h1>Smart Data Cleaner</h1>
+        <header class="header-container">
+            <h1>Smart Data Cleaner</h1>
+            <button id="themeToggle" class="secondary-btn theme-toggle" title="Toggle Dark/Light Mode">
+                <span id="themeIcon">🌙</span>
+            </button>
+        </header>
         
         <div class="upload-section">
             <div id="uploadBox" class="upload-box">
@@ -35,14 +40,14 @@
             </div>
             <div class="option-group">
                 <label for="outlierThresh">Outlier Sensitivity:</label>
-                <select id="outlierThresh" style="padding: 5px; border: 1px solid #ccc;">
+                <select id="outlierThresh">
                     <option value="3.0">Conservative (3.0x IQR - Recommended)</option>
                     <option value="1.5">Standard (1.5x IQR)</option>
                 </select>
             </div>
             <div class="option-group">
                 <label for="numFill">Numeric Imputation:</label>
-                <select id="numFill" style="padding: 5px; border: 1px solid #ccc;">
+                <select id="numFill">
                     <option value="median">Median (Default)</option>
                     <option value="mean">Mean</option>
                     <option value="zero">Zero</option>
@@ -50,11 +55,11 @@
             </div>
             <div class="option-group">
                 <label for="catFill">Categorical Imputation:</label>
-                <select id="catFill" style="padding: 5px; border: 1px solid #ccc;">
+                <select id="catFill">
                     <option value="mode">Mode</option>
                     <option value="constant">Custom Constant</option>
                 </select>
-                <input type="text" id="catConst" placeholder="Value" style="display: none; padding: 5px; border: 1px solid #ccc; width: 150px;">
+                <input type="text" id="catConst" placeholder="Value" style="display: none;">
             </div>
         </div>
 

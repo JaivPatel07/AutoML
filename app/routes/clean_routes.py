@@ -3,22 +3,24 @@ from fastapi.responses import FileResponse
 import pandas as pd
 import numpy as np
 import os
+from pathlib import Path
 import json
 
 from app.cleaner.cleaner import SmartDataCleaner
 
 router = APIRouter()
 
-# Store the last uploaded file info
+# Note: Using a global dict is not thread-safe for multi-user scenarios.
 last_upload = {}
 
-# Ensure directories exist once
-os.makedirs("app/uploads", exist_ok=True)
-os.makedirs("app/reports", exist_ok=True)
+UPLOAD_DIR = Path("app/uploads")
+REPORT_DIR = Path("app/reports")
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+REPORT_DIR.mkdir(parents=True, exist_ok=True)
 
 def read_df(file_path):
     """Load DataFrame from CSV or Excel"""
-    ext = os.path.splitext(file_path)[1].lower()
+    ext = Path(file_path).suffix.lower()
     if ext == '.csv':
         return pd.read_csv(file_path)
     elif ext in ['.xlsx', '.xls']:
@@ -28,26 +30,40 @@ def read_df(file_path):
 def to_json(df, limit=100):
     """Convert DF to JSON-safe list of records"""
     subset = df.head(limit).replace([np.inf, -np.inf], np.nan)
-    # Using pandas' to_json is the most robust way to handle NaN/Inf for JSON compliance
     return json.loads(subset.to_json(orient="records"))
+
+async def save_upload(file: UploadFile) -> Path:
+    file_path = UPLOAD_DIR / file.filename
+    content = await file.read()
+    with open(file_path, "wb") as f:
+        f.write(content)
+    return file_path
+
+def prepare_df_response(df, filename, outliers=None, extra_meta=None):
+    response = {
+        "filename": filename,
+        "data": to_json(df, limit=100),
+        "shape": df.shape,
+        "columns": df.columns.tolist(),
+        "total_rows": len(df),
+        "outliers_found": outliers or {}
+    }
+    if extra_meta:
+        response.update(extra_meta)
+    return response
 
 @router.post("/preview")
 async def preview_file(file: UploadFile = File(...)):
     """Get a preview of the CSV file before cleaning"""
-    file_path = f"app/uploads/{file.filename}"
-
     try:
-        # Save the file to disk so it can be previewed and later cleaned
-        content = await file.read()
-        with open(file_path, "wb") as f:
-            f.write(content)
+        file_path = await save_upload(file)
+        
         df = read_df(file_path)
         cleaner = SmartDataCleaner()
         cleaner.fit(df)
-        last_upload["original_file"] = file_path
+        last_upload["original_file"] = str(file_path)
         last_upload["filename"] = file.filename
 
-        # Identify outliers in preview data (row index 0-9)
         outliers_found = {}
         preview_df = df.head(10)
         for col, bounds in cleaner.outlier_bounds.items():
@@ -59,15 +75,11 @@ async def preview_file(file: UploadFile = File(...)):
                     if idx_str not in outliers_found:
                         outliers_found[idx_str] = []
                     outliers_found[idx_str].append(col)
-        return {
-            "filename": file.filename,
-            "data": to_json(df, limit=10),
-            "shape": df.shape,
-            "columns": df.columns.tolist(),
+        
+        return prepare_df_response(df.head(10), file.filename, outliers_found, {
             "total_rows": len(df),
-            "auto_flagged": cleaner.flagged_reasons,
-            "outliers_found": outliers_found
-        }
+            "auto_flagged": cleaner.flagged_reasons
+        })
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Error reading CSV: {str(e)}")
 
@@ -81,42 +93,42 @@ async def clean_file(
     categorical_constant: str = Form("UNKNOWN"),
     outlier_thresh: float = Form(3.0)
 ):
-    file_path = f"app/uploads/{file.filename}"
+    try:
+        file_path = await save_upload(file)
 
-    with open(file_path, "wb") as f:
-        f.write(await file.read())
+        drop_list = []
+        if drop_cols:
+            drop_list = [c.strip() for c in drop_cols.split(',') if c.strip()]
 
-    drop_list = []
-    if drop_cols:
-        drop_list = [c.strip() for c in drop_cols.split(',') if c.strip()]
-
-    df = read_df(file_path)
-    cleaner = SmartDataCleaner(
-        drop_cols=drop_list,
-        use_outliers=use_outliers,
-        num_fill=num_fill,
-        cat_fill=cat_fill,
-        categorical_constant=categorical_constant,
-        outlier_thresh=outlier_thresh
-    )
-    clean_df = cleaner.fit_transform(df)
-    base_name = os.path.splitext(file.filename)[0]
-    cleaned_file = f"app/uploads/cleaned_{base_name}.csv"
-    clean_df.to_csv(cleaned_file, index=False)
-    report_file = f"app/reports/{file.filename}_report.json"
-    cleaner.export_report(report_file)
-    
-    last_upload["original_file"] = file_path
-    last_upload["cleaned_file"] = cleaned_file
-    last_upload["report_file"] = report_file
-    last_upload["filename"] = file.filename
-    
-    return {
-        "message": "Cleaning completed",
-        "cleaned_file": cleaned_file,
-        "report_file": report_file,
-        "filename": file.filename
-    }
+        df = read_df(file_path)
+        cleaner = SmartDataCleaner(
+            drop_cols=drop_list,
+            use_outliers=use_outliers,
+            num_fill=num_fill,
+            cat_fill=cat_fill,
+            categorical_constant=categorical_constant,
+            outlier_thresh=outlier_thresh
+        )
+        clean_df = cleaner.fit_transform(df)
+        base_name = Path(file.filename).stem
+        cleaned_file = UPLOAD_DIR / f"cleaned_{base_name}.csv"
+        clean_df.to_csv(cleaned_file, index=False)
+        report_file = REPORT_DIR / f"{file.filename}_report.json"
+        cleaner.export_report(str(report_file))
+        
+        last_upload["original_file"] = str(file_path)
+        last_upload["cleaned_file"] = str(cleaned_file)
+        last_upload["report_file"] = str(report_file)
+        last_upload["filename"] = file.filename
+        
+        return {
+            "message": "Cleaning completed",
+            "cleaned_file": cleaned_file,
+            "report_file": report_file,
+            "filename": file.filename
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 @router.get("/view/original")
 async def view_original():
@@ -142,15 +154,8 @@ async def view_original():
                         if idx_str not in outliers_found:
                             outliers_found[idx_str] = []
                         outliers_found[idx_str].append(col)
-
-        return {
-            "filename": last_upload["filename"],
-            "data": to_json(df, limit=100),
-            "shape": df.shape,
-            "columns": df.columns.tolist(),
-            "total_rows": len(df),
-            "outliers_found": outliers_found
-        }
+        
+        return prepare_df_response(df, last_upload["filename"], outliers_found)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -162,14 +167,7 @@ async def view_cleaned():
     
     try:
         df = read_df(last_upload["cleaned_file"])
-
-        return {
-            "filename": last_upload["filename"],
-            "data": to_json(df, limit=100),
-            "shape": df.shape,
-            "columns": df.columns.tolist(),
-            "total_rows": len(df)
-        }
+        return prepare_df_response(df, last_upload["filename"])
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -182,11 +180,9 @@ async def view_removed():
     try:
         df_orig = read_df(last_upload["original_file"])
         
-        # Load report to get indices
         with open(last_upload["report_file"], "r") as f:
             report = json.load(f)
         
-        # Map indices to removal reasons
         reasons_map = {}
         
         for idx in report.get("duplicate_rows_removed", []):
@@ -208,15 +204,8 @@ async def view_removed():
             return {"filename": last_upload["filename"], "data": [], "shape": [0, 0], "columns": [], "total_rows": 0}
             
         removed_df = df_orig.loc[indices].copy()
-        # Prepend the Reason column
         removed_df.insert(0, "Removal Reason", [reasons_map[idx] for idx in indices])
-        return {
-            "filename": last_upload["filename"],
-            "data": to_json(removed_df, limit=100),
-            "shape": removed_df.shape,
-            "columns": removed_df.columns.tolist(),
-            "total_rows": len(removed_df)
-        }
+        return prepare_df_response(removed_df, last_upload["filename"])
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 

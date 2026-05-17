@@ -2,12 +2,13 @@ import pandas as pd
 import numpy as np
 import re
 import json
+from typing import List, Dict, Any, Tuple, Optional
 
-def fix_missing_values(df):
-    df = df.copy()
+def fix_missing_values(df: pd.DataFrame) -> Tuple[pd.DataFrame, List[Dict[str, Any]]]:
+    """Standardize missing values and remove repeated junk characters."""
     missing_values = ["?", "NA", "N/A", "na","null", "NULL", "-", "--", ""]
-    df.replace(missing_values, np.nan, inplace=True)
-    df.replace(r"^\s*$", np.nan, regex=True, inplace=True)
+    df = df.replace(missing_values, np.nan)
+    df = df.replace(r"^\s*$", np.nan, regex=True)
     replaced_data = []
     for col in df.select_dtypes(include="object").columns:
         value_counts = df[col].value_counts(dropna=True)
@@ -16,14 +17,12 @@ def fix_missing_values(df):
             if (isinstance(value, str) and ratio > 0.4 and re.fullmatch(r"(.)\1+", value.strip().lower())):
                 rows = df.index[df[col] == value].tolist()
                 replaced_data.append({"column": col, "rows": rows, "old_value": value, "new_value": "NaN"})
-
                 df[col] = df[col].replace(value, np.nan)
 
     return df, replaced_data
 
 
 class SmartDataCleaner:
-
     def __init__(
         self,
         row_missing_limit=0.01,
@@ -38,7 +37,6 @@ class SmartDataCleaner:
         categorical_constant="UNKNOWN",
         outlier_thresh=3.0
     ):
-
         self.row_missing_limit = row_missing_limit
         self.col_missing_limit = col_missing_limit
         self.id_limit = id_limit
@@ -56,7 +54,7 @@ class SmartDataCleaner:
         self.outlier_bounds = {}
         self.logs = []
 
-    def fit(self, df):
+    def fit(self, df: pd.DataFrame) -> 'SmartDataCleaner':
         df, _ = fix_missing_values(df)
 
         for col in df.columns:
@@ -82,7 +80,6 @@ class SmartDataCleaner:
                     self.flagged_reasons[col] = "Names/Text"
                     self.logs.append(f"Dropped text-heavy column: {col}")
         
-        # Calculate outlier bounds for all numeric columns
         self.outlier_bounds = {}
         for col in df.select_dtypes(include=np.number).columns:
             if col not in self.remove_columns:
@@ -99,8 +96,13 @@ class SmartDataCleaner:
                 self.remove_columns.append(col)
                 self.logs.append(f"User requested removal of column: {col}")
         return self
-    def transform(self, df):
-        memory_before = (df.memory_usage(deep=True).sum() / 1024**2)
+
+    def _get_memory_mb(self, df: pd.DataFrame) -> float:
+        usage = df.memory_usage(deep=True).sum() / 1024**2
+        return round(usage, 2) if np.isfinite(usage) else 0.0
+
+    def transform(self, df: pd.DataFrame) -> pd.DataFrame:
+        memory_before = self._get_memory_mb(df)
         df, replaced_data = fix_missing_values(df)
         report = {
             "initial_shape": df.shape,
@@ -115,16 +117,12 @@ class SmartDataCleaner:
             "flagged_reasons": self.flagged_reasons,
             "outlier_removal_enabled": self.use_outliers,
             "outliers": {},
-            "memory_before_mb": round(memory_before, 2) if np.isfinite(memory_before) else 0.0,
+            "memory_before_mb": memory_before,
             "memory_after_mb": None,
             "logs": self.logs
         }
         df = df.drop_duplicates()
-        df.drop(
-            columns=self.remove_columns,
-            inplace=True,
-            errors="ignore"
-        )
+        df = df.drop(columns=self.remove_columns, errors="ignore")
 
         report["removed_columns"] = self.remove_columns
 
@@ -199,11 +197,7 @@ class SmartDataCleaner:
         for col in df.select_dtypes(include=["float64"]).columns:
             df[col] = pd.to_numeric(df[col], downcast="float")
 
-        memory_after = (
-            df.memory_usage(deep=True).sum() / 1024**2
-        )
-
-        report["memory_after_mb"] = round(memory_after, 2) if np.isfinite(memory_after) else 0.0
+        report["memory_after_mb"] = self._get_memory_mb(df)
 
         report["missing_after"] = (
             df.isnull().sum().to_dict()
@@ -211,16 +205,16 @@ class SmartDataCleaner:
 
         report["final_shape"] = df.shape
 
-        self.report = report
+        self._report = report
 
         return df
 
-    def fit_transform(self, df):
+    def fit_transform(self, df: pd.DataFrame) -> pd.DataFrame:
         return self.fit(df).transform(df)
 
-    def get_report(self):
-        return self.report
+    def get_report(self) -> Dict[str, Any]:
+        return getattr(self, '_report', {})
 
-    def export_report(self, file_name="cleaning_report.json"):
+    def export_report(self, file_name: str = "cleaning_report.json") -> None:
         with open(file_name, "w") as file:
-            json.dump(self.report, file, indent=4)
+            json.dump(self.get_report(), file, indent=4)

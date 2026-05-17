@@ -1,4 +1,3 @@
-// DOM Elements
 const uploadBox = document.getElementById('uploadBox');
 const fileInput = document.getElementById('fileInput');
 const cleanBtn = document.getElementById('cleanBtn');
@@ -21,19 +20,87 @@ const resultsSection = document.getElementById('resultsSection');
 const errorMessage = document.getElementById('errorMessage');
 const tabButtons = document.querySelectorAll('.tab-btn');
 const tabPanes = document.querySelectorAll('.tab-pane');
+const themeToggle = document.getElementById('themeToggle');
+const themeIcon = document.getElementById('themeIcon');
 
 let selectedFile = null;
 let missingChart = null;
 let retentionChart = null;
+let lastReportData = null;
 
-// File Upload Handlers
+function renderThemeIcon(isDark) {
+    if (!themeIcon) return;
+
+    themeIcon.innerHTML = isDark
+        ? `
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M21 12.8A8.5 8.5 0 1 1 11.2 3 6.8 6.8 0 0 0 21 12.8Z" fill="currentColor"></path>
+            </svg>
+        `
+        : `
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <circle cx="12" cy="12" r="4.5" fill="none" stroke="currentColor" stroke-width="1.8"></circle>
+                <path d="M12 2.5v2.2M12 19.3v2.2M4.9 4.9l1.6 1.6M17.5 17.5l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.9 19.1l1.6-1.6M17.5 6.5l1.6-1.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>
+            </svg>
+        `;
+}
+
+// Theme Management
+function getChartTheme() {
+    const styles = getComputedStyle(document.body);
+
+    return {
+        primary: styles.getPropertyValue('--text-color').trim(),
+        accent: styles.getPropertyValue('--accent-yellow').trim(),
+        grid: styles.getPropertyValue('--grid-color').trim(),
+        text: styles.getPropertyValue('--text-color').trim()
+    };
+}
+
+function updateThemeUI(isDark) {
+    document.body.classList.toggle('dark-mode', isDark);
+    renderThemeIcon(isDark);
+    if (themeToggle) {
+        themeToggle.title = isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode';
+    }
+}
+
+function initTheme() {
+    try {
+        const savedTheme = localStorage.getItem('theme');
+        const isDark = savedTheme === 'dark';
+        updateThemeUI(isDark);
+    } catch (e) {
+        console.warn("Theme initialization suppressed: localStorage is unavailable.");
+    }
+}
+
+function toggleTheme() {
+    try {
+        const isDark = document.body.classList.contains('dark-mode');
+        localStorage.setItem('theme', !isDark ? 'dark' : 'light');
+        updateThemeUI(!isDark);
+        
+        if (lastReportData) {
+            renderMissingValuesChart(lastReportData);
+            renderDataRetentionChart(lastReportData);
+        }
+    } catch (e) {
+        console.error("Theme toggle failed:", e);
+    }
+}
+
+if (themeToggle) {
+    themeToggle.addEventListener('click', toggleTheme);
+}
+initTheme();
+
 uploadBox.addEventListener('click', () => fileInput.click());
 
 fileInput.addEventListener('change', (e) => {
     handleFileSelect(e.target.files[0]);
 });
 
-// Drag and drop
 uploadBox.addEventListener('dragover', (e) => {
     e.preventDefault();
     uploadBox.classList.add('drag-over');
@@ -49,7 +116,6 @@ uploadBox.addEventListener('drop', (e) => {
     handleFileSelect(e.dataTransfer.files[0]);
 });
 
-// Toggle categorical constant input visibility
 catFill.addEventListener('change', () => {
     catConst.style.display = catFill.value === 'constant' ? 'block' : 'none';
 });
@@ -66,8 +132,7 @@ async function handleFileSelect(file) {
     selectedFile = file;
     dropColsInput.value = '';
     uploadBox.querySelector('p').textContent = `✓ Selected: ${file.name}`;
-    uploadBox.style.borderColor = '#ffffff';
-    // Generate Preview before cleaning
+    uploadBox.style.borderColor = 'var(--primary-black)';
     await loadPreview(file);
     errorMessage.style.display = 'none';
 }
@@ -106,7 +171,14 @@ async function loadPreview(file) {
     }
 }
 
-// Clean File
+async function loadViewData(endpoint, rowElementId, colElementId, tableId) {
+    const response = await fetch(endpoint);
+    const data = await response.json();
+    document.getElementById(rowElementId).textContent = data.total_rows.toLocaleString();
+    document.getElementById(colElementId).textContent = data.columns.length;
+    renderTable(tableId, data);
+}
+
 cleanBtn.addEventListener('click', async () => {
     if (!selectedFile) return;
     
@@ -147,9 +219,8 @@ cleanBtn.addEventListener('click', async () => {
         xhr.onload = async () => {
             if (xhr.status === 200) {
                 showLoading(true, 'Processing and cleaning data...');
-                progressBarContainer.style.display = 'none'; // Hide progress bar after upload
+                progressBarContainer.style.display = 'none';
 
-                // Load the data
                 await Promise.all([
                     loadOriginalData(),
                     loadCleanedData(),
@@ -158,7 +229,6 @@ cleanBtn.addEventListener('click', async () => {
                 ]);
                 
                 showLoading(false);
-                // Hide only the upload interaction elements, not the whole section
                 uploadBox.style.display = 'none';
                 cleanBtn.style.display = 'none';
                 previewSection.style.display = 'none';
@@ -193,43 +263,27 @@ cleanBtn.addEventListener('click', async () => {
         console.error(error);
     }
 });
-// Load Original Data
 async function loadOriginalData() {
-    const response = await fetch('/view/original');
-    const data = await response.json();
-    document.getElementById('originalRows').textContent = data.total_rows.toLocaleString();
-    document.getElementById('originalCols').textContent = data.columns.length;
-    renderTable('originalTable', data);
+    return loadViewData('/view/original', 'originalRows', 'originalCols', 'originalTable');
 }
 
-// Load Cleaned Data
 async function loadCleanedData() {
-    const response = await fetch('/view/cleaned');
-    const data = await response.json();
-    document.getElementById('cleanedRows').textContent = data.total_rows.toLocaleString();
-    document.getElementById('cleanedCols').textContent = data.columns.length;
-    renderTable('cleanedTable', data);
+    return loadViewData('/view/cleaned', 'cleanedRows', 'cleanedCols', 'cleanedTable');
 }
 
-// Load Removed Data
 async function loadRemovedData() {
-    const response = await fetch('/view/removed');
-    const data = await response.json();
-    document.getElementById('removedRows').textContent = data.total_rows.toLocaleString();
-    document.getElementById('removedCols').textContent = data.columns.length;
-    renderTable('removedTable', data);
+    return loadViewData('/view/removed', 'removedRows', 'removedCols', 'removedTable');
 }
 
-// Load Report
 async function loadReport() {
     try {
         const response = await fetch('/report');
         const report = await response.json();
+        lastReportData = report;
         const reportContent = document.getElementById('reportContent');
 
         let html = '<div class="report-view">';
 
-        // 1. Executive Summary
         html += '<div class="report-section"><h3>Summary</h3><ul>';
         html += `<li><strong>Initial Data:</strong> ${report.initial_shape[0]} rows × ${report.initial_shape[1]} columns</li>`;
         html += `<li><strong>Cleaned Data:</strong> ${report.final_shape[0]} rows × ${report.final_shape[1]} columns</li>`;
@@ -238,13 +292,10 @@ async function loadReport() {
         html += `<li><strong>Outlier Removal Enabled:</strong> ${report.outlier_removal_enabled ? 'Yes' : 'No'}</li>`;
         html += '</ul></div>';
 
-        // 1.5. Missing Values Chart
         html += '<div class="report-section"><h3>Missing Values Comparison</h3><div class="chart-container"><canvas id="missingValuesChart"></canvas></div></div>';
 
-        // 1.6. Data Retention Chart
         html += '<div class="report-section"><h3>Data Retention Summary</h3><div class="chart-container"><canvas id="dataRetentionChart"></canvas></div></div>';
 
-        // 2. Structural Changes
         if (report.removed_columns.length > 0) {
             html += '<div class="report-section"><h3>Dropped Columns</h3><ul>';
             report.removed_columns.forEach(col => {
@@ -254,7 +305,6 @@ async function loadReport() {
             html += '</ul></div>';
         }
 
-        // 3. Standardization (Junk removal)
         if (report.replaced_values && report.replaced_values.length > 0) {
             html += '<div class="report-section"><h3>Standardization</h3><ul>';
             report.replaced_values.forEach(item => {
@@ -263,7 +313,6 @@ async function loadReport() {
             html += '</ul></div>';
         }
 
-        // 4. Missing Values (Imputation)
         const filledCols = Object.keys(report.filled_values);
         if (filledCols.length > 0) {
             html += '<div class="report-section"><h3>Data Imputation</h3><ul>';
@@ -274,7 +323,6 @@ async function loadReport() {
             html += '</ul></div>';
         }
 
-        // 5. Outliers
         const outlierCols = Object.keys(report.outliers);
         if (outlierCols.length > 0) {
             html += '<div class="report-section"><h3>Outlier Detection</h3><ul>';
@@ -284,7 +332,6 @@ async function loadReport() {
             html += '</ul></div>';
         }
 
-        // 6. Detailed Processing Logs
         if (report.logs && report.logs.length > 0) {
             html += '<div class="report-section"><h3>Full Processing Log</h3><ul class="log-list">';
             report.logs.forEach(log => html += `<li>${log}</li>`);
@@ -294,7 +341,6 @@ async function loadReport() {
         html += '</div>';
         reportContent.innerHTML = html;
 
-        // Render the chart after HTML is injected
         renderMissingValuesChart(report);
         renderDataRetentionChart(report);
     } catch (error) {
@@ -308,6 +354,7 @@ function renderMissingValuesChart(report) {
 
     if (missingChart) missingChart.destroy();
 
+    const theme = getChartTheme();
     const labels = Object.keys(report.missing_before);
     const beforeData = labels.map(label => report.missing_before[label]);
     const afterData = labels.map(label => report.missing_after[label] || 0);
@@ -320,15 +367,15 @@ function renderMissingValuesChart(report) {
                 {
                     label: 'Before Cleaning',
                     data: beforeData,
-                    backgroundColor: '#111',
-                    borderColor: '#111',
+                    backgroundColor: theme.primary,
+                    borderColor: theme.primary,
                     borderWidth: 1
                 },
                 {
                     label: 'After Cleaning',
                     data: afterData,
-                    backgroundColor: '#ffcc00',
-                    borderColor: '#111',
+                    backgroundColor: theme.accent,
+                    borderColor: theme.primary,
                     borderWidth: 1
                 }
             ]
@@ -337,9 +384,17 @@ function renderMissingValuesChart(report) {
             responsive: true,
             maintainAspectRatio: false,
             scales: {
-                y: { beginAtZero: true, ticks: { precision: 0 } }
+                y: { 
+                    beginAtZero: true, 
+                    ticks: { precision: 0, color: theme.text },
+                    grid: { color: theme.grid }
+                },
+                x: {
+                    ticks: { color: theme.text },
+                    grid: { color: theme.grid }
+                }
             },
-            plugins: { legend: { position: 'top' } }
+            plugins: { legend: { position: 'top', labels: { color: theme.text } } }
         }
     });
 }
@@ -350,6 +405,7 @@ function renderDataRetentionChart(report) {
 
     if (retentionChart) retentionChart.destroy();
 
+    const theme = getChartTheme();
     const kept = report.final_shape[0];
     const initial = report.initial_shape[0];
     const removed = initial - kept;
@@ -360,8 +416,8 @@ function renderDataRetentionChart(report) {
             labels: ['Rows Kept', 'Rows Removed'],
             datasets: [{
                 data: [kept, removed],
-                backgroundColor: ['#111', '#ffcc00'],
-                borderColor: '#111',
+                backgroundColor: [theme.primary, theme.accent],
+                borderColor: theme.primary,
                 borderWidth: 1
             }]
         },
@@ -371,6 +427,7 @@ function renderDataRetentionChart(report) {
             plugins: {
                 legend: {
                     position: 'top',
+                    labels: { color: theme.text }
                 },
                 tooltip: {
                     callbacks: {
@@ -387,7 +444,6 @@ function renderDataRetentionChart(report) {
     });
 }
 
-// Render Table Helper
 function renderTable(tableId, data) {
     const table = document.getElementById(tableId);
     const tbody = table.querySelector('tbody');
@@ -395,7 +451,6 @@ function renderTable(tableId, data) {
     
     if (data.data.length === 0) return;
     
-    // Header
     const headerRow = document.createElement('tr');
     const maxCols = 50;
     const columns = data.columns.slice(0, maxCols);
@@ -460,7 +515,6 @@ function renderTable(tableId, data) {
         headerRow.appendChild(thDots);
     }
     tbody.appendChild(headerRow);
-    // Rows
     data.data.slice(0, 50).forEach((row, rowIndex) => {
         const tr = document.createElement('tr');
         columns.forEach(col => {
@@ -468,7 +522,6 @@ function renderTable(tableId, data) {
             const val = row[col];
             td.textContent = val === null ? 'Missing' : String(val).substring(0, 50);
             
-            // Highlight outliers
             if (data.outliers_found && data.outliers_found[rowIndex] && data.outliers_found[rowIndex].includes(col)) {
                 td.classList.add('outlier-cell');
                 td.title = "Statistical Outlier";
@@ -484,7 +537,6 @@ function renderTable(tableId, data) {
         tbody.appendChild(tr);
     });
 }
-// Tab Navigation
 tabButtons.forEach(button => {
     button.addEventListener('click', () => {
         const tabName = button.getAttribute('data-tab');
@@ -495,22 +547,18 @@ tabButtons.forEach(button => {
     });
 });
 
-// Download Function
 downloadBtn.addEventListener('click', () => {
     window.location.href = '/download';
 });
 
-// Prediction Function
 predictBtn.addEventListener('click', () => {
     alert('Prediction feature placeholder: The cleaned data is now ready for model training or inference!');
 });
 
-// Reset Function
 resetBtn.addEventListener('click', () => {
     location.reload();
 });
 
-// Utility Functions
 function showLoading(show, message = '') {
     loadingSpinner.style.display = show ? 'block' : 'none';
     const statusMessage = document.getElementById('statusMessage');
