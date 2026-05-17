@@ -63,38 +63,6 @@ Generates detailed reports including:
 
 ---
 
-## Example Cleaning Summary
-
-```txt
-DATA CLEANING SUMMARY
-
-Original Shape: 891 rows × 12 columns
-Cleaned Shape: 651 rows × 9 columns
-
-Columns Removed:
-- Name → High uniqueness detected
-- Ticket → ID-like column
-- Cabin → 77% missing values
-
-Missing Values Filled:
-- Age → Median = 28
-- Embarked → Mode = 'S'
-
-Outliers Removed:
-- Fare → 34 rows removed
-
-Duplicates Removed:
-- 5 duplicate rows removed
-
-Memory Optimization:
-- Reduced dataset size from 2.4 MB → 1.1 MB
-
-Retention:
-- 73.1% rows retained
-```
-
----
-
 ## API Endpoints
 
 | Method | Endpoint         | Description                                              |
@@ -227,12 +195,6 @@ I built Smart Data Cleaner to automate common cleaning operations while keeping 
 * Exportable PDF reports
 * Advanced dataset profiling
 * Automated preprocessing workflows
-
----
-
-## License
-
-MIT License
 
 ---
 
