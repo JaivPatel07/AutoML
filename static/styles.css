@@ -34,6 +34,7 @@ body.dark-mode {
     --highlight-bg: #3d3410;
     --border-light: #444;
     --grid-color: rgba(255,255,255,0.05);
+    --hard-shadow: 8px 8px 0px var(--primary-black);
 }
 
 *{
